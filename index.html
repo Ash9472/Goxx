@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>You got GOXXED Final for Acode</title>
+<style>
+body { font-family: monospace; background:#111; color:#fff; text-align:center; }
+#game-container { width:800px; margin:50px auto; }
+#queue { display:flex; justify-content:flex-start; gap:20px; position:relative; height:160px; align-items:flex-end; overflow:hidden; }
+
+.pixel-person { width:40px; height:60px; position:relative; display:inline-block; }
+.pixel-person .body { width:40px; height:35px; position:absolute; bottom:0; border-radius:3px; }
+.pixel-person.color1 .body { background:#3498db; }
+.pixel-person.color2 .body { background:#2ecc71; }
+.pixel-person.color3 .body { background:#e74c3c; }
+.pixel-person.color4 .body { background:#f1c40f; }
+.pixel-person.color5 .body { background:#9b59b6; }
+.pixel-person .head { width:40px; height:25px; position:absolute; bottom:35px; border-radius:50%; background:#ffe0bd; }
+.pixel-person .hair { width:40px;height:10px;position:absolute;bottom:50px;border-radius:2px 2px 0 0; }
+.pixel-person.color1 .hair { background:#222; }
+.pixel-person.color2 .hair { background:#8b4513; }
+.pixel-person.color3 .hair { background:#000; }
+.pixel-person.color4 .hair { background:#ff0; }
+.pixel-person.color5 .hair { background:#800080; }
+.pixel-person .eye-left, .pixel-person .eye-right { width:4px; height:4px; background:#000; position:absolute; top:8px; border-radius:50%; }
+.pixel-person .eye-left { left:10px; } .pixel-person .eye-right { right:10px; }
+.pixel-person .mouth { width:12px; height:2px; background:#000; position:absolute; top:17px; left:14px; border-radius:1px; }
+
+.pixel-person .hand-left, .pixel-person .hand-right, .pixel-person .leg-left, .pixel-person .leg-right { position:absolute; background:inherit; }
+.pixel-person .hand-left, .pixel-person .hand-right { width:5px; height:18px; top:10px; animation:handMove 0.6s infinite alternate; }
+.pixel-person .hand-left { left:-5px; }
+.pixel-person .hand-right { right:-5px; animation-delay:0.3s; }
+.pixel-person .leg-left, .pixel-person .leg-right { width:6px; height:20px; bottom:0; animation:legMove 0.6s infinite alternate; }
+.pixel-person .leg-left { left:5px; }
+.pixel-person .leg-right { right:5px; animation-delay:0.3s; }
+
+@keyframes handMove { 0% {transform:rotate(0deg);} 100% {transform:rotate(25deg);} }
+@keyframes legMove { 0% {transform:rotate(0deg);} 100% {transform:rotate(25deg);} }
+
+#display { width:400px; height:200px; margin:0 auto; background:#222; border:3px solid #fff; position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+#display canvas { position:absolute; top:0; left:0; }
+#display-text { position:absolute; color:#ff0000; font-size:28px; font-weight:bold; opacity:0; transition:opacity 0.3s ease; }
+
+button { margin-top:20px; padding:10px 25px; font-size:16px; cursor:pointer; background:#ff0000; color:#fff; border:none; font-weight:bold; }
+</style>
+</head>
+<body>
+<h1>You got GOXXED Final for Acode</h1>
+
+<div id="game-container">
+  <div id="queue">
+    <div class="pixel-person color1"><div class="hair"></div><div class="head"></div><div class="body"></div><div class="eye-left"></div><div class="eye-right"></div><div class="mouth"></div></div>
+    <div class="pixel-person color2"><div class="hair"></div><div class="head"></div><div class="body"></div><div class="eye-left"></div><div class="eye-right"></div><div class="mouth"></div></div>
+    <div class="pixel-person color3"><div class="hair"></div><div class="head"></div><div class="body"></div><div class="eye-left"></div><div class="eye-right"></div><div class="mouth"></div></div>
+    <div class="pixel-person color4"><div class="hair"></div><div class="head"></div><div class="body"></div><div class="eye-left"></div><div class="eye-right"></div><div class="mouth"></div></div>
+    <div class="pixel-person color5"><div class="hair"></div><div class="head"></div><div class="body"></div><div class="eye-left"></div><div class="eye-right"></div><div class="mouth"></div></div>
+  </div>
+  <div id="display">
+    <canvas id="chart" width="400" height="200"></canvas>
+    <div id="display-text">You got GOXXED</div>
+  </div>
+  <button id="next-btn">GET GOXXED</button>
+</div>
+
+<!-- استفاده از MP3 -->
+<audio id="click-a" src="click.mp3" preload="auto"></audio>
+<audio id="steps-a" src="steps.mp3" preload="auto"></audio>
+<audio id="scream-a" src="scream.mp3" preload="auto"></audio>
+<audio id="goxxed-a" src="goxxed.mp3" preload="auto"></audio>
+
+<script>
+const queue = Array.from(document.querySelectorAll('.pixel-person'));
+const displayText = document.getElementById('display-text');
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+let currentIndex = 0;
+let audioUnlocked = false;
+
+function playOne(src, volume=1){
+  try{
+    const a = new Audio(src);
+    a.volume = volume;
+    a.play().catch(()=>{});
+  }catch(e){}
+}
+
+// روی اولین تعامل کاربر صدای Audio آزاد می‌شود
+document.getElementById('next-btn').addEventListener('click', ()=>{
+  if(!audioUnlocked){
+    ['click-a','steps-a','scream-a','goxxed-a'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el){
+        el.play().then(()=>{ el.pause(); el.currentTime = 0; }).catch(()=>{});
+      }
+    });
+    audioUnlocked = true;
+  }
+  
+  playOne('click.mp3', 0.9);
+  if(currentIndex >= queue.length) return;
+  runNextPerson(queue[currentIndex]);
+});
+
+function movePersonSmooth(person, cb){
+  const startX = 0;
+  const endX = 320;
+  const duration = 2000; 
+  const start = performance.now();
+  const stepsEndTime = duration - 500;
+
+  const stepIntervalMs = 420;
+  let stepTimer = setInterval(()=>{
+    if(audioUnlocked) playOne('steps.mp3', 0.45);
+  }, stepIntervalMs);
+
+  let goxxedPlayed = false;
+
+  function frame(now){
+    let t = (now - start) / duration;
+    if(t>1) t=1;
+    const x = startX + (endX-startX)*t;
+    const yOffset = Math.sin(t*Math.PI*4)*2;
+    person.style.transform = `translate(${x}px, ${yOffset}px)`;
+
+    if(now - start >= stepsEndTime && stepTimer){
+      clearInterval(stepTimer);
+      stepTimer = null;
+      if(audioUnlocked && !goxxedPlayed){
+        setTimeout(()=>{
+          playOne('goxxed.mp3', 0.95);
+          goxxedPlayed = true;
+        }, 500);
+      }
+    }
+
+    if(t < 1) requestAnimationFrame(frame);
+    else { if(cb) cb(); }
+  }
+  requestAnimationFrame(frame);
+}
+
+function animateChart(cb){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const startY = 50;
+  const midX = canvas.width / 2;
+  const endY = 180;
+
+  ctx.beginPath();
+  ctx.strokeStyle = "#ff0000";
+  ctx.lineWidth = 3;
+  ctx.moveTo(0,startY);
+  ctx.lineTo(midX,startY);
+  ctx.stroke();
+
+  const duration = 1000;
+  const start = performance.now();
+  function step(now){
+    let p = (now - start)/duration;
+    if(p>1) p=1;
+    ctx.clearRect(midX-2,0,canvas.width-midX+4,canvas.height);
+    ctx.beginPath();
+    ctx.strokeStyle="#ff0000";
+    ctx.lineWidth=3;
+    ctx.moveTo(0,startY);
+    ctx.lineTo(midX,startY);
+    const dropX = midX + (canvas.width-midX)*p;
+    const dropY = startY + (endY-startY)*p;
+    ctx.lineTo(dropX, dropY);
+    ctx.stroke();
+    if(p<1) requestAnimationFrame(step);
+    else if(cb) cb();
+  }
+  requestAnimationFrame(step);
+}
+
+function goxxed(person){
+  const eyes = person.querySelectorAll('.eye-left,.eye-right');
+  eyes.forEach(e=>{
+    e.style.background='transparent';
+    e.style.width='auto'; e.style.height='auto'; e.style.fontSize='12px';
+    e.style.color='black';
+    e.innerText='X'; e.style.display='flex';
+    e.style.alignItems='center'; e.style.justifyContent='center';
+  });
+  const mouth = person.querySelector('.mouth');
+  mouth.style.width='12px'; mouth.style.height='12px'; mouth.style.borderRadius='50%';
+  mouth.style.background='black';
+
+  if(audioUnlocked) setTimeout(()=>playOne('scream.mp3',0.95),90);
+
+  person.style.transition='transform 1.2s ease-in';
+  person.style.transform='translate(900px,0px)';
+
+  setTimeout(()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); },700);
+}
+
+function runNextPerson(person){
+  displayText.style.opacity = 0;
+  movePersonSmooth(person, ()=>{
+    displayText.style.opacity = 1;
+    animateChart(()=>{
+      setTimeout(()=>{
+        displayText.style.opacity = 0;
+        goxxed(person);
+        setTimeout(()=>{ currentIndex++; },1000);
+      },220);
+    });
+  });
+}
+
+document.addEventListener('keydown', e=>{
+  if(e.code==='Space'||e.key==='Enter'){
+    document.getElementById('next-btn').click();
+  }
+});
+</script>
+</body>
+</html>
